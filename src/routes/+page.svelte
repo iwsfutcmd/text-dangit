@@ -1,6 +1,7 @@
 <script lang="ts">
 	import createHarfBuzz from '$lib/hb';
 	import hbjs from '$lib/hbjs';
+	import { base } from '$app/paths';
 	let hb: any;
 	import { onMount } from 'svelte';
 	// let selectedFont = 'Noto Naskh Arabic';
@@ -75,7 +76,7 @@
 	};
 
 	onMount(async () => {
-		const module = await createHarfBuzz();
+		const module = await createHarfBuzz({ locateFile: (path: string) => `${base}/${path}` });
 		hb = hbjs(module);
 		// Object.keys(fonts).forEach(async (fontName) => await loadFont(fontName));
 	});
