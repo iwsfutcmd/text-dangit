@@ -1,5 +1,7 @@
 <script lang="ts">
+	import createHarfBuzz from '$lib/hb';
 	import hbjs from '$lib/hbjs';
+	let hb: any;
 	import { onMount } from 'svelte';
 	// let selectedFont = 'Noto Naskh Arabic';
 	// const fonts: { [key: string]: string } = {
@@ -21,7 +23,7 @@
 	// };
 	// let fontCache: { [key: string]: any } = {};
 	let text = '';
-	let hb: any;
+	// let hb: any;
 	let paths: { path: string; cl: number }[] = [];
 	const defaultBbox = '0 0 128 128';
 	let bbox = defaultBbox;
@@ -73,7 +75,8 @@
 	};
 
 	onMount(async () => {
-		hb = hbjs((await WebAssembly.instantiateStreaming(fetch('./hb.wasm'))).instance);
+		const module = await createHarfBuzz();
+		hb = hbjs(module);
 		// Object.keys(fonts).forEach(async (fontName) => await loadFont(fontName));
 	});
 
