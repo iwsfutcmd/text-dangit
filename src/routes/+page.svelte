@@ -1,50 +1,21 @@
 <script lang="ts">
-	import createHarfBuzz from '$lib/hb';
-	import hbjs from '$lib/hbjs';
-	import { base } from '$app/paths';
-	let hb: any;
 	import { onMount } from 'svelte';
-	// let selectedFont = 'Noto Naskh Arabic';
-	// const fonts: { [key: string]: string } = {
-	// 	'Noto Nastaliq Urdu':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notonastaliqurdu/NotoNastaliqUrdu[wght].ttf',
-	// 	'Noto Naskh Arabic':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notonaskharabic/NotoNaskhArabic[wght].ttf',
-	// 	'Noto Sans Arabic':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf',
-	// 	'Noto Sans': 'https://raw.githack.com/google/fonts/main/ofl/notosans/NotoSans[wdth,wght].ttf',
-	// 	'Noto Sans Armenian':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notosansarmenian/NotoSansArmenian[wdth,wght].ttf',
-	// 	'Noto Serif Armenian':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notoserifarmenian/NotoSerifArmenian[wdth,wght].ttf',
-	// 	'Noto Sans Georgian':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notosansgeorgian/NotoSansGeorgian[wdth,wght].ttf',
-	// 	'Noto Serif Georgian':
-	// 		'https://raw.githack.com/google/fonts/main/ofl/notoserifgeorgian/NotoSerifGeorgian[wdth,wght].ttf'
-	// };
-	// let fontCache: { [key: string]: any } = {};
-	let text = '';
-	// let hb: any;
-	let paths: { path: string; cl: number }[] = [];
-	const defaultBbox = '0 0 128 128';
-	let bbox = defaultBbox;
-	// let glyphCache: { [key: string]: { [key: number]: any } } = {};
-	let svgSize = 256;
-	let svgElement: SVGElement;
-	// const loadFont = async (fontName: string) => {
-	// 	const fontBlob = new Uint8Array(await (await fetch(fonts[fontName])).arrayBuffer());
-	// 	const blob = hb.createBlob(fontBlob);
-	// 	const face = hb.createFace(blob, 0);
-	// 	fontCache[fontName] = hb.createFont(face);
-	// 	glyphCache[fontName] = {};
-	// };
+	import type * as HB from 'harfbuzzjs';
 
-	let fileName = '';
-	let font: any;
-	let glyphs = {};
-	let googleFontsInput = '';
-	let googleFontsError = '';
-	let googleFontsLoading = false;
+	let hb = $state<typeof HB>();
+
+	let text = $state('');
+	let paths = $state<{ path: string; cl: number }[]>([]);
+	const defaultBbox = '0 0 128 128';
+	let bbox = $state(defaultBbox);
+	let svgElement = $state<SVGElement>();
+
+	let fileName = $state('');
+	let font = $state<HB.Font>();
+	let glyphCache: Record<number, HB.SvgPathCommand[]> = {};
+	let googleFontsInput = $state('');
+	let googleFontsError = $state('');
+	let googleFontsLoading = $state(false);
 
 	const WOFF_MAGIC = 0x774f4646; // 'wOFF'
 
@@ -124,14 +95,21 @@
 				}
 				const out = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
 				let pos = 0;
-				for (const c of chunks) { out.set(c, pos); pos += c.length; }
+				for (const c of chunks) {
+					out.set(c, pos);
+					pos += c.length;
+				}
 				return out;
 			})
 		);
 
 		// Build offset table header values
-		let maxPow = 1, log2 = 0;
-		while (maxPow * 2 <= numTables) { maxPow *= 2; log2++; }
+		let maxPow = 1,
+			log2 = 0;
+		while (maxPow * 2 <= numTables) {
+			maxPow *= 2;
+			log2++;
+		}
 
 		// Calculate output offsets (tables are 4-byte aligned)
 		let dataStart = 12 + numTables * 16;
@@ -146,8 +124,8 @@
 		const tv = new DataView(ttf.buffer);
 		tv.setUint32(0, flavor);
 		tv.setUint16(4, numTables);
-		tv.setUint16(6, maxPow * 16);        // searchRange
-		tv.setUint16(8, log2);               // entrySelector
+		tv.setUint16(6, maxPow * 16); // searchRange
+		tv.setUint16(8, log2); // entrySelector
 		tv.setUint16(10, numTables * 16 - maxPow * 16); // rangeShift
 		tables.forEach((t, i) => {
 			const b = 12 + i * 16;
@@ -161,19 +139,21 @@
 	}
 
 	const loadFontData = (fontData: Uint8Array, name: string) => {
-		const blob = hb.createBlob(fontData);
-		const face = hb.createFace(blob, 0);
-		font = hb.createFont(face);
-		glyphs = {};
+		if (!hb) return;
+		const blob = new hb.Blob(fontData.buffer as ArrayBuffer);
+		const face = new hb.Face(blob, 0);
+		font = new hb.Font(face);
+		glyphCache = {};
 		fileName = name;
 	};
 
 	// Handles the file drop
-	const handleDrop = (event) => {
+	const handleDrop = (event: DragEvent) => {
 		event.preventDefault();
-		const file = [...event.dataTransfer.files][0];
+		const file = [...(event.dataTransfer?.files ?? [])][0];
+		if (!file) return;
 		const reader = new FileReader();
-		reader.onload = (e) => loadFontData(new Uint8Array(e.target.result), file.name);
+		reader.onload = (e) => loadFontData(new Uint8Array(e.target!.result as ArrayBuffer), file.name);
 		reader.readAsArrayBuffer(file);
 	};
 
@@ -198,24 +178,23 @@
 			}
 
 			const css = await (await fetch(input)).text();
-			console.log('Google Fonts CSS:', css.slice(0, 500));
 
 			const entries = parseFontFaceEntries(css);
 			if (!entries.length) throw new Error('No font URL found in CSS response');
 			const entry = bestEntryForText(entries, text);
 
-			console.log('Font URL:', entry.url);
 			const fontData = new Uint8Array(await (await fetch(entry.url)).arrayBuffer());
-			console.log('Font data size:', fontData.length, 'bytes, first bytes:', fontData.slice(0, 4));
 
 			const magic = new DataView(fontData.buffer).getUint32(0);
 			const ttfData = magic === WOFF_MAGIC ? await decodeWoff1(fontData) : fontData;
 
 			const familyMatch = input.match(/family=([^&:]+)/);
-			const name = familyMatch ? decodeURIComponent(familyMatch[1].replace(/\+/g, ' ')) : 'Google Font';
+			const name = familyMatch
+				? decodeURIComponent(familyMatch[1].replace(/\+/g, ' '))
+				: 'Google Font';
 			loadFontData(ttfData, name);
 		} catch (e) {
-			googleFontsError = e.message;
+			googleFontsError = e instanceof Error ? e.message : String(e);
 			console.error('Google Fonts load error:', e);
 		} finally {
 			googleFontsLoading = false;
@@ -223,6 +202,7 @@
 	};
 
 	const downloadSVG = () => {
+		if (!svgElement) return;
 		const blob = new Blob([svgElement.outerHTML], { type: 'text/plain' });
 		const url = URL.createObjectURL(blob);
 
@@ -234,122 +214,123 @@
 		URL.revokeObjectURL(url); // Clean up the object URL
 	};
 
+	// HarfBuzz is loaded at runtime from a CDN rather than bundled. The package
+	// locates its WASM via `new URL('harfbuzz.wasm', import.meta.url)`, so serving
+	// the ESM module from a raw-file CDN (jsDelivr) lets the browser fetch the
+	// .wasm alongside it. `harfbuzzjs` stays a devDependency for its types only.
+	const HB_CDN = 'https://cdn.jsdelivr.net/npm/harfbuzzjs@1.2.0/dist/index.mjs';
+
 	onMount(async () => {
-		const module = await createHarfBuzz({ locateFile: (path: string) => `${base}/${path}` });
-		hb = hbjs(module);
-		// Object.keys(fonts).forEach(async (fontName) => await loadFont(fontName));
+		hb = (await import(/* @vite-ignore */ HB_CDN)) as typeof HB;
 	});
 
-	$: {
-		if (hb && text && font) {
-			text = text.normalize('NFD');
-			// const font = fontCache[selectedFont];
-			const buffer = hb.createBuffer();
-			buffer.addText(text);
-			buffer.guessSegmentProperties();
-			hb.shape(font, buffer);
-			const result = buffer.json(font);
-			result.forEach((x) => {
-				// if (glyphCache[selectedFont][x.g]) return;
-				// glyphCache[selectedFont][x.g] = font.glyphToJson(x.g);
-				if (glyphs[x.g]) return;
-				glyphs[x.g] = font.glyphToJson(x.g);
-			});
-			buffer.destroy();
-			let xmin = 10000;
-			let xmax = -10000;
-			let ymin = 10000;
-			let ymax = -10000;
-			let ax = 0;
-			let ay = 0;
-			paths = result
-				.map((ginfo) => {
-					// let path = glyphCache[selectedFont][ginfo.g]
-					let path = glyphs[ginfo.g]
-						.filter((command) => {
-							return command.type !== 'Z';
-						})
-						.map((command) => {
-							let result = command.values
-								.map((p, i) => {
-									// apply ax/ay/dx/dy to coords
-									return i % 2 ? -(p + ay + ginfo.dy) : p + ax + ginfo.dx;
-								})
-								.map((x, i) => {
-									// bbox calc
-									if (i % 2) {
-										if (x < ymin) ymin = x;
-										if (x > ymax) ymax = x;
-									} else {
-										if (x < xmin) xmin = x;
-										if (x > xmax) xmax = x;
-									}
-									return x;
-								});
-							return [command.type].concat(result);
-						});
-					ax += ginfo.ax;
-					ay += ginfo.ay;
-					return { path, cl: ginfo.cl };
-				})
-				.map(({ path, cl }) => ({
-					path: path
-						.map((y) => {
-							return y[0] + y.slice(1).join(' ');
-						})
-						.join('')
-						.replace(/ -/g, '-'),
-					cl
-				}));
-
-			let width = xmax - xmin;
-			let height = ymax - ymin;
-			// pad it a bit
-			let pad = Math.round(Math.min(width / 10, height / 10));
-			xmin -= pad;
-			ymin -= pad;
-			width += pad * 2;
-			height += pad * 2;
-
-			bbox = xmin + ' ' + ymin + ' ' + width + ' ' + height;
-		} else {
+	$effect(() => {
+		if (!(hb && text && font)) {
 			paths = [];
 			bbox = defaultBbox;
+			return;
 		}
-	}
+
+		const normalized = text.normalize('NFD');
+		const buffer = new hb.Buffer();
+		buffer.addText(normalized);
+		buffer.guessSegmentProperties();
+		hb.shape(font, buffer);
+		const result = buffer.getGlyphInfosAndPositions();
+		result.forEach((x) => {
+			if (glyphCache[x.codepoint]) return;
+			glyphCache[x.codepoint] = font!.glyphToJson(x.codepoint);
+		});
+
+		let xmin = 10000;
+		let xmax = -10000;
+		let ymin = 10000;
+		let ymax = -10000;
+		let ax = 0;
+		let ay = 0;
+		const nextPaths = result
+			.map((ginfo) => {
+				const path = glyphCache[ginfo.codepoint]
+					.filter((command) => command.type !== 'Z')
+					.map((command) => {
+						const coords = command.values
+							.map((p, i) => {
+								// apply ax/ay/dx/dy to coords
+								return i % 2 ? -(p + ay + (ginfo.yOffset ?? 0)) : p + ax + (ginfo.xOffset ?? 0);
+							})
+							.map((x, i) => {
+								// bbox calc
+								if (i % 2) {
+									if (x < ymin) ymin = x;
+									if (x > ymax) ymax = x;
+								} else {
+									if (x < xmin) xmin = x;
+									if (x > xmax) xmax = x;
+								}
+								return x;
+							});
+						return [command.type, ...coords];
+					});
+				ax += ginfo.xAdvance ?? 0;
+				ay += ginfo.yAdvance ?? 0;
+				return { path, cl: ginfo.cluster };
+			})
+			.map(({ path, cl }) => ({
+				path: path
+					.map((y) => y[0] + y.slice(1).join(' '))
+					.join('')
+					.replace(/ -/g, '-'),
+				cl
+			}));
+
+		let width = xmax - xmin;
+		let height = ymax - ymin;
+		// pad it a bit
+		const pad = Math.round(Math.min(width / 10, height / 10));
+		xmin -= pad;
+		ymin -= pad;
+		width += pad * 2;
+		height += pad * 2;
+
+		paths = nextPaths;
+		bbox = xmin + ' ' + ymin + ' ' + width + ' ' + height;
+	});
 </script>
 
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-<div class="dropzone" on:dragover|preventDefault on:drop={handleDrop}>
+<div
+	class="dropzone"
+	ondragover={(e) => e.preventDefault()}
+	ondrop={handleDrop}
+	role="button"
+	tabindex="0"
+>
 	<span class="material-symbols-outlined">upload_file</span>
 </div>
-<label>Google Fonts: <input
-	type="text"
-	placeholder="Paste a Google Fonts URL or &lt;link&gt; tag"
-	bind:value={googleFontsInput}
-	on:keydown={(e) => e.key === 'Enter' && loadFromGoogleFonts()}
-/><button on:click={loadFromGoogleFonts} disabled={googleFontsLoading}>
-	<span class="material-symbols-outlined">{googleFontsLoading ? 'hourglass_empty' : 'download'}</span>
-</button></label>
+<label
+	>Google Fonts: <input
+		type="text"
+		placeholder="Paste a Google Fonts URL or &lt;link&gt; tag"
+		bind:value={googleFontsInput}
+		onkeydown={(e) => e.key === 'Enter' && loadFromGoogleFonts()}
+	/><button onclick={loadFromGoogleFonts} disabled={googleFontsLoading}>
+		<span class="material-symbols-outlined"
+			>{googleFontsLoading ? 'hourglass_empty' : 'download'}</span
+		>
+	</button></label
+>
 {#if googleFontsError}<div class="error">{googleFontsError}</div>{/if}
 <div>{fileName}</div>
-<!-- <label>svg size:<input type="number" bind:value={svgSize} /></label> -->
-<button on:click={downloadSVG}><span class="material-symbols-outlined">download</span></button>
-<!-- <select bind:value={selectedFont}>
-	{#each Object.keys(fonts) as font}
-		<option>{font}</option>
-	{/each}
-</select> -->
-<label>text: <textarea dir="auto" bind:value={text} /></label>
+<button onclick={downloadSVG}><span class="material-symbols-outlined">download</span></button>
+<label>text: <textarea dir="auto" bind:value={text}></textarea></label>
 <div>
 	<svg class="svg-preview" viewBox={bbox} xmlns="http://www.w3.org/2000/svg" bind:this={svgElement}>
-		{#each paths as path}
+		{#each paths as path, i (i)}
 			<path d={path.path} />
 		{/each}
 	</svg>
 </div>
 
-<!-- height={svgSize}  -->
 <style>
 	.svg-preview {
 		inline-size: 100vw;
