@@ -24,8 +24,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # No build step — the app is a single static file. Publish just index.html.
-      - run: mkdir _site && cp index.html _site/
+      # No build step. Publish index.html plus the vendored harfbuzzjs build
+      # (custom WASM with COLR color support) that it loads at runtime.
+      - run: |
+          mkdir _site
+          cp index.html _site/
+          cp -r vendor _site/
 
       - uses: actions/upload-pages-artifact@v3
         with:
