@@ -214,7 +214,35 @@
 
 			.preview-bar {
 				display: flex;
-				justify-content: flex-end;
+				justify-content: space-between;
+				align-items: center;
+				gap: 0.75rem;
+			}
+			.bg-control {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4rem;
+				font-size: 0.85rem;
+				font-weight: 600;
+				color: var(--muted);
+				cursor: pointer;
+				user-select: none;
+			}
+			.bg-control input[type='checkbox'] {
+				cursor: pointer;
+			}
+			.bg-control input[type='color'] {
+				width: 1.6rem;
+				height: 1.6rem;
+				padding: 0;
+				border: 1px solid var(--border);
+				border-radius: 6px;
+				background: none;
+				cursor: pointer;
+			}
+			.bg-control input[type='color']:disabled {
+				opacity: 0.4;
+				cursor: default;
 			}
 
 			.material-symbols-outlined {
@@ -279,6 +307,11 @@
 
 			<div class="field">
 				<div class="preview-bar">
+					<label class="bg-control">
+						<input type="checkbox" id="bg-toggle" />
+						Background
+						<input type="color" id="bg-color" value="#ffffff" disabled />
+					</label>
 					<button id="download-button" class="icon-only" aria-label="Download SVG" disabled>
 						<span class="material-symbols-outlined">download</span>
 					</button>
@@ -302,6 +335,7 @@
 			const HB_CDN = './vendor/harfbuzzjs/index.mjs';
 			const WOFF_MAGIC = 0x774f4646; // 'wOFF'
 			const defaultBbox = '0 0 128 128';
+			const SVG_NS = 'http://www.w3.org/2000/svg';
 
 			// DOM
 			const dropzone = document.getElementById('dropzone');
@@ -315,6 +349,8 @@
 			const svg = document.getElementById('svg');
 			const downloadButton = document.getElementById('download-button');
 			const statusEl = document.getElementById('status');
+			const bgToggle = document.getElementById('bg-toggle');
+			const bgColor = document.getElementById('bg-color');
 
 			// State
 			let hb = null;
@@ -622,14 +658,29 @@
 				const rendered = document.importNode(doc.documentElement, true);
 				const hbViewBox = rendered.getAttribute('viewBox') ?? defaultBbox;
 
-				// Crop to the actual drawn area (async: rasterizes off-screen).
+				// Crop to the actual drawn area (async: rasterizes off-screen). The
+				// crop is computed on the transparent glyph render so an opaque
+				// background wouldn't swallow the whole canvas.
 				const viewBox = await inkViewBox(svgString, hbViewBox);
 				if (seq !== renderSeq) return; // a newer render superseded this one
 
 				// Adopt the contents into our <svg>, keeping its id/class (and page
 				// styling) intact, with the tightened viewBox.
+				const children = [...rendered.childNodes];
+				if (bgToggle.checked) {
+					// Fill the (cropped) viewBox with the chosen background color,
+					// behind the glyphs. Included in the downloaded SVG too.
+					const [bx, by, bw, bh] = viewBox.split(/\s+/).map(Number);
+					const bgRect = document.createElementNS(SVG_NS, 'rect');
+					bgRect.setAttribute('x', bx);
+					bgRect.setAttribute('y', by);
+					bgRect.setAttribute('width', bw);
+					bgRect.setAttribute('height', bh);
+					bgRect.setAttribute('fill', bgColor.value);
+					children.unshift(bgRect);
+				}
 				svg.setAttribute('viewBox', viewBox);
-				svg.replaceChildren(...rendered.childNodes);
+				svg.replaceChildren(...children);
 			}
 
 			function downloadSVG() {
@@ -669,6 +720,14 @@
 
 			textarea.addEventListener('input', render);
 			downloadButton.addEventListener('click', downloadSVG);
+
+			bgToggle.addEventListener('change', () => {
+				bgColor.disabled = !bgToggle.checked;
+				render();
+			});
+			bgColor.addEventListener('input', () => {
+				if (bgToggle.checked) render();
+			});
 
 			// --- Load HarfBuzz from the CDN ------------------------------------------
 			statusEl.textContent = 'Loading HarfBuzz…';
