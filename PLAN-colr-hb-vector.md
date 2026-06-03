@@ -1,10 +1,22 @@
 # Plan: COLR (v0 + v1) color-font support via HarfBuzz `hb-vector`
 
-Status: **not started** — investigation complete (incl. the build open-item), implementation deferred to a future session.
+Status: **IMPLEMENTED** — custom WASM built and wired into the app; COLR v0/v1
+color rendering (gradients/transforms) verified in the browser.
 Branch: `colr-hb-vector-support`.
 
-> **Session 2 update:** the step-4 open item and the step-5 API are now resolved.
-> See "## RESOLVED: exact build delta + API" near the bottom — start there.
+> **Session 3 update — done.** Built a custom harfbuzzjs (HarfBuzz 14.2.1, emsdk
+> 4.0.13) with the hb-vector color paint API enabled, added a `Font.glyphsToSvg`
+> wrapper, vendored the artifacts to `vendor/harfbuzzjs/`, and rewrote the app's
+> `render()` to use it. Verified: COLRv1 gradients by glyph id, typed text
+> ("SPICE" in Bungee Spice) with positioned gradient glyphs, and monochrome
+> regression (NotoSans → black outlines via the foreground fallback). WASM grew
+> only ~38 KB (400→438 KB). Reproduction recipe in `vendor/harfbuzzjs/README.md`.
+> Remaining/optional: a color-vs-monochrome mode toggle (currently always color,
+> with plain fonts falling back to black); sweep-gradient fidelity still subject
+> to the SVG-1.1 caveat below.
+>
+> The notes below are the original investigation; "## RESOLVED" documents the
+> exact build delta that was applied.
 
 ## Goal
 
