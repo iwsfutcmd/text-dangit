@@ -1,7 +1,10 @@
 # Plan: COLR (v0 + v1) color-font support via HarfBuzz `hb-vector`
 
-Status: **not started** — investigation complete, implementation deferred to a future session.
+Status: **not started** — investigation complete (incl. the build open-item), implementation deferred to a future session.
 Branch: `colr-hb-vector-support`.
+
+> **Session 2 update:** the step-4 open item and the step-5 API are now resolved.
+> See "## RESOLVED: exact build delta + API" near the bottom — start there.
 
 ## Goal
 
@@ -83,15 +86,10 @@ fidelity.
 3. **Export the symbols** in `harfbuzz.symbols`: the `hb-vector` SVG emitter entry
    point(s), plus any `hb_ot_color_*` / `hb_color_*` helpers needed. Unlisted symbols
    stay invisible even if compiled in.
-4. **OPEN ITEM — verify before estimating:** does the amalgamated `harfbuzz/src/harfbuzz.cc`
-   (the only file in `HARFBUZZ_SRCS`) already `#include` `hb-vector-paint-svg.cc` /
-   `hb-vector-paint.cc`? If not, add those `.cc` files to the compile line. This is the
-   single biggest unknown for effort sizing. Check `src/harfbuzz.cc` includes in the
-   14.2.0 tree.
-5. **Confirm the exact `hb-vector` entry-point signature** (how you ask it to render a
-   shaped buffer / a string+font to an SVG string, and how the result is returned —
-   into a `hb_blob_t` / caller buffer). See `util/hb-vector.cc` and `util/hb-vector-svg-all.c`
-   for canonical usage; mirror that from JS.
+4. **[RESOLVED]** The amalgam does NOT include `hb-vector*.cc`; add them to `HARFBUZZ_SRCS`.
+   See "## RESOLVED: exact build delta + API" for the exact file list.
+5. **[RESOLVED]** Entry point is `hb_vector_paint_*` → `hb_vector_paint_render()` returns an
+   `hb_blob_t*` of SVG bytes (per glyph). Full flow + gotchas in the RESOLVED section.
 6. **Build** with the existing Emscripten toolchain (`em++`, `make harfbuzz`).
    Prereq: emsdk — use a Dockerized emsdk for reproducibility. Produces a new
    `harfbuzz.wasm` + `harfbuzz.js` + `index.mjs` (larger than the 400KB tiny build).
@@ -117,6 +115,98 @@ Decide: a mode toggle (monochrome outlines vs. color), auto-detect COLR and swit
 two separate outputs. Don't silently turn every font multicolor.
 
 ## Quick repro commands used in investigation (for reference)
+
+## RESOLVED: exact build delta + API (verified against HarfBuzz tag 14.2.0)
+
+### Build delta (resolves open item from step 4)
+
+Verified facts at tag `14.2.0`:
+- The amalgam `src/harfbuzz.cc` **does** include `hb-ot-color.cc`, `hb-paint.cc`,
+  `hb-paint-bounded.cc`, `hb-paint-extents.cc`. So enabling color/paint is purely the
+  two `#undef`s below — those units are already compiled.
+- The amalgam **does NOT** include any `hb-vector*.cc`. And `hb-vector.cc` is **not**
+  itself a mini-amalgam (it includes only `hb-vector-buf.hh`). Each vector `.cc` is an
+  independent translation unit that includes only `.hh` headers.
+- No `HB_NO_VECTOR`-style guard exists on the vector files — they compile unconditionally
+  once their deps (paint, ot-color) are enabled.
+
+So the harfbuzzjs-fork build changes are exactly:
+
+1. `config-override.h` — add:
+   ```c
+   #undef HB_NO_COLOR
+   #undef HB_NO_PAINT
+   ```
+2. `Makefile` — add the vector TUs to `HARFBUZZ_SRCS` (they are NOT in the amalgam):
+   ```
+   harfbuzz/src/hb-vector.cc
+   harfbuzz/src/hb-vector-path.cc
+   harfbuzz/src/hb-vector-paint.cc
+   harfbuzz/src/hb-vector-paint-svg.cc
+   harfbuzz/src/hb-vector-draw.cc      # optional: monochrome vector path; can replace hand-rolled outline+bbox
+   ```
+   (Do NOT add `hb-vector-paint-pdf.cc` — PDF output, not needed.)
+3. `harfbuzz.symbols` — add the exported entry points (emscripten wants `_`-prefixed):
+   ```
+   _hb_vector_paint_create_or_fail
+   _hb_vector_paint_destroy
+   _hb_vector_paint_set_palette
+   _hb_vector_paint_set_foreground
+   _hb_vector_paint_set_transform
+   _hb_vector_paint_set_svg_prefix
+   _hb_vector_paint_glyph_or_fail
+   _hb_vector_paint_render
+   _hb_vector_paint_recycle_blob
+   ```
+   Plus confirm `hb_blob_get_data` / `hb_blob_get_length` / `hb_blob_destroy` are exported
+   (the existing `Blob` wrapper likely already pulls these in — verify).
+   The linker keeps transitive deps, so listing the public entry points is enough.
+4. Rebuild: `make harfbuzz` (Emscripten `em++`, already configured).
+
+`-DHB_EXPERIMENTAL_API` is already set — fine, but note hb-vector's public symbols are
+NOT experimental-gated in the header (no `#ifdef HB_EXPERIMENTAL_API` around them), so
+that flag isn't strictly required for these.
+
+### Color API (resolves step 5) — `hb_vector_paint_t`, format `HB_VECTOR_FORMAT_SVG`
+
+Two contexts exist: `hb_vector_draw_t` (monochrome outline → SVG) and `hb_vector_paint_t`
+(**color, COLR v0/v1 → SVG**). We want the paint one. `hb_vector_paint_render()` returns
+an `hb_blob_t*` containing the SVG bytes. Canonical per-glyph flow (from
+`util/hb-vector-svg-all.c`):
+
+```c
+hb_vector_paint_t *p = hb_vector_paint_create_or_fail(HB_VECTOR_FORMAT_SVG);
+hb_vector_paint_set_palette(p, 0);
+hb_vector_paint_set_foreground(p, HB_COLOR(0,0,0,255));  // fallback color for "foreground" paints
+hb_vector_paint_set_transform(p, 1,0,0,1, penX,penY);     // position this glyph
+if (hb_vector_paint_glyph_or_fail(p, font, gid, extents_mode)) {
+    hb_blob_t *blob = hb_vector_paint_render(p);          // -> SVG bytes for this glyph
+    // hb_blob_get_data(blob, &len) -> read out of WASM heap
+    hb_vector_paint_recycle_blob(p, blob);
+}
+hb_vector_paint_destroy(p);
+```
+
+### Wiring notes / gotchas for the app side
+
+- **Per-glyph SVG, not whole-run.** `hb_vector_paint_glyph` renders ONE glyph id. The app
+  already shapes the buffer and computes pen advances/offsets in `render()`; reuse that to
+  position each glyph, then combine. Either set the per-glyph transform via
+  `hb_vector_paint_set_transform` (pen position) and merge the fragments, or wrap each
+  fragment in a translated `<g>`.
+- **ID collisions when merging.** Each glyph's SVG defines its own gradient/clip ids
+  (`#g0`, `#c1`, …). Merging multiple glyph SVGs into one document WILL collide. Use
+  `hb_vector_paint_set_svg_prefix(p, "g<i>_")` per glyph to namespace ids — this is exactly
+  what that API is for. Don't skip it.
+- **Drop the forced black fill** (`.svg-preview path { fill: #000 }`) so palette colors show
+  — but only in color mode (see product note).
+- `hb_vector_paint_glyph_or_fail` returning false = glyph has no color data; fall back to
+  the monochrome `hb_vector_draw_*` path (or current outline path) for that glyph.
+- Input gid is a SHAPED glyph id, not a codepoint — feed `result[i].codepoint` from the
+  shaping buffer (HarfBuzz reuses `.codepoint` to mean glyph id post-shaping, as the
+  current code already does with `glyphToJson`).
+
+### Quick repro commands used in investigation (for reference)
 
 ```sh
 # exports of the current CDN wasm
