@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>text, dang it — font → SVG shaper</title>
+		<link
+			rel="icon"
+			href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAQAAABpN6lAAAAAAXNSR0IArs4c6QAABd1JREFUeNrtXdtt6zgQVQkuwSWkhJTgElxCSnAJLiEluASXkP+IYgQDgiAIAiEYEARBOLuL7N3cm3XGpI4moR9nvvITmENyzjyp5I477rjjjkhgl+nKbMw23f8uZms26couk+uFXZqnbGecgSgu25mnq1NEuk73BkHykq7tIrl82IXZiLsun4bnCz8L5sk4A04uVgmvj+bFYBZxZpNcFuzCbA1mlRf7kFwK0pV5M1CQpyR+2EW2M9CS7DlyZvgwemryEq0K7PIX19+kCszm/efdpAp+Ed5NqmAq4VkUqND8KzUK2DBzuEs8ECXh5XDocQoDWpQwviI7R3ESXoEO5zCg9jwNr4/Jl4iQ8HJ08MWACua8vJ20BHESXo0RYeh8zsE2+R8iJLwDekzBiENs1yCc8CwaCKBVkO6Td8RJeAUGcBhxiOMMhBOeRYsP6Kkg3UdJeCVGzIUeVlb1MjrCO2JeuDNcENXeC4RHQLwGTmv5D6E2/4AOOujkS/CgsvzAo08QHn0GNsrL5wmPR0swgfLyLRymYECDHAYWJY4edGgEmdn0hSy/nLj3TTBxFt9lBfxNn51IeP3JG12cV9mXkq4Ugh0dwhtRw3whLSQcv8MM2gc2upfRIZdodDoVbtSPP094o0eaQ8Kg7w2ma73o/uiV6BKhT4TnI75qIuGVMDCxK+D8/jtMgYMN8CmqL5ml5xTA3/9m0t4XMMGSo8FIGEEV+1+Rzk64VJ9crFZXAWYr78lIOzvhYv84CSWhANoAdoSzw8mHx2GJzCB5AQrK2eGlxoheNy1mnubZ/xEljIIcUOjmhLJn0UHlnR1edElQKna5WQkv0vYp6d/3pLOjL/ZBUwEqe5+j+CU8Xb7NUPObzgA9bNDCa3QYT/wXh5K4AIoKKCEigPIKHD2yhDb8AixUFdBAQjt7xWAMVEL2nBCgFVCTFQPeqtjljyqgUKsY1ESrFKGA0Ciw4SoG7PVydjFTJWAqC/RkxUBGy99/3g+wkFEKFQMejrcAfDZoONfBoVoiL7/nDEh9AG1Q9F+gw5wYYTkrwIfDpdfPbNHAoQeF8IoQ0rV+RQgDfhbFd7RNSxXhGj+LjnOF+ZSI/fEzkOtXhtOVAWcHwtsjChSo0OI8atYb5PPCx1ktey3UG6mqEN8ZoH8NjrDh/51PiPCtMQfBveHLpAXBBMkHeEOoqQIHOzn3WOk7xHbpk9gYAKovaGrg3eh3jPvNgVh0CMX4/vPjVsDrI9cPzJfKHKcAfv+D67bBRk+WgVCAYiwgd3P0YnhUBhVAZVSEAmj7L6uhRIMjuv+kRX2StDhPs9BlAeWxdz5zKBKochzAC99r3BPFcbo9hhe+17jWjQW0x995Ms11u0TlKNCRC+V7jVsYIh9AUiDf8cWXynLdjFC68iiLCCVLapKY7zZ8Uc0DNB5D7brDNT3THcAroBMn+/UniUfkTG2IJ8Hu5I9yOIQTnsrodLbTDYMEohoC2KHCGPP7AZICJPTKwzWW7w/kAyEJnf5gFb//vBEUoD9cw1WG9RVQ8k9nyL3GbF2YH5VxkNBLhMdnjVkHWL9DCGiFpzPozjA+AOI7hHKPG5sLhEe6uzz781XB3stsNWjgMEwkvAPxlpw6EVYgwBIev3zeDFqM0EKHPI6XBO2Cit4VCI9ifr5LTL9HqA3PLjiiHYodmz2AAz9gke7VH9g27nuuQRPb3vu+HNGCADFNmu0Ys8f3h8gq4EvksrwR8R55BngV8NOk29C958/Am8bjGSOqS3lNPl3Nn9o8wl7S9wSy3ZxFrS5OwmOuwYdU6CGhRQETJ+HN1yuSo4L7YxByQAeHEhYmXsLz8QpJiZ3wfMYnCImf8ObqGbrqz6ecc4tu4AM6gbbg0gjPL1/s2T12mYTn5xec7SC9ZMLz5gR3tYTnB7vMnq+W8PztQbq/0e/GfToJ7kYX/5tZXGe7G/x25IncwSbdG/c1y5vtlS7984l4ffzbPqzN5l3++etqjvsdd9xxFfgLb6Q29nbWlxEAAAAASUVORK5CYII="
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined"
+			rel="stylesheet"
+		/>
+		<style>
+			:root {
+				--bg: #fafafa;
+				--surface: #ffffff;
+				--fg: #18181b;
+				--muted: #71717a;
+				--border: #e4e4e7;
+				--accent: #2563eb;
+				--accent-fg: #ffffff;
+				--error: #dc2626;
+				--canvas: #f4f4f5;
+				--radius: 14px;
+				--shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+			}
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--bg: #0c0d10;
+					--surface: #16181d;
+					--fg: #e7e7ea;
+					--muted: #8b8b94;
+					--border: #2a2d35;
+					--accent: #3b82f6;
+					--canvas: #0a0b0e;
+					--shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 20px rgba(0, 0, 0, 0.35);
+				}
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+			html {
+				color-scheme: light dark;
+			}
+			body {
+				margin: 0;
+				background: var(--bg);
+				color: var(--fg);
+				font-family:
+					system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.container {
+				max-width: 760px;
+				margin: 0 auto;
+				padding: clamp(1.5rem, 4vw, 3rem) 1.25rem 4rem;
+				display: flex;
+				flex-direction: column;
+				gap: 1.5rem;
+			}
+
+			header {
+				text-align: center;
+				margin-bottom: 0.25rem;
+			}
+			header h1 {
+				margin: 0;
+				font-size: clamp(1.6rem, 5vw, 2.25rem);
+				font-weight: 700;
+				letter-spacing: -0.02em;
+			}
+			header p {
+				margin: 0.4rem 0 0;
+				color: var(--muted);
+				font-size: 0.95rem;
+			}
+
+			.dropzone {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 0.5rem;
+				padding: 2rem 1.5rem;
+				background: var(--surface);
+				border: 2px dashed var(--border);
+				border-radius: var(--radius);
+				cursor: pointer;
+				transition:
+					border-color 0.15s ease,
+					background 0.15s ease,
+					transform 0.05s ease;
+				text-align: center;
+			}
+			.dropzone:hover {
+				border-color: var(--accent);
+			}
+			.dropzone.dragover {
+				border-color: var(--accent);
+				background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+			}
+			.dropzone .icon {
+				font-size: 2.5rem;
+				color: var(--accent);
+			}
+			.dropzone .hint {
+				font-weight: 600;
+			}
+			.dropzone .filename {
+				font-size: 0.85rem;
+				color: var(--muted);
+				word-break: break-all;
+			}
+			.dropzone .filename:empty::before {
+				content: 'No font loaded yet';
+			}
+
+			.field {
+				display: flex;
+				flex-direction: column;
+				gap: 0.45rem;
+			}
+			.field > label {
+				font-size: 0.85rem;
+				font-weight: 600;
+				color: var(--muted);
+			}
+
+			.input-group {
+				display: flex;
+				gap: 0.5rem;
+			}
+			input[type='text'],
+			textarea {
+				width: 100%;
+				font: inherit;
+				color: var(--fg);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				padding: 0.65rem 0.8rem;
+				transition:
+					border-color 0.15s ease,
+					box-shadow 0.15s ease;
+			}
+			input[type='text']:focus,
+			textarea:focus {
+				outline: none;
+				border-color: var(--accent);
+				box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+			}
+			textarea {
+				min-height: 5.5rem;
+				resize: vertical;
+				font-size: 1.05rem;
+			}
+
+			button {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.4rem;
+				font: inherit;
+				font-weight: 600;
+				color: var(--accent-fg);
+				background: var(--accent);
+				border: none;
+				border-radius: 10px;
+				padding: 0.65rem 1rem;
+				cursor: pointer;
+				white-space: nowrap;
+				transition:
+					filter 0.15s ease,
+					transform 0.05s ease;
+			}
+			button:hover:not(:disabled) {
+				filter: brightness(1.08);
+			}
+			button:active:not(:disabled) {
+				transform: translateY(1px);
+			}
+			button:disabled {
+				opacity: 0.55;
+				cursor: default;
+			}
+			button.icon-only {
+				padding: 0.65rem;
+			}
+
+			.error {
+				color: var(--error);
+				font-size: 0.85rem;
+				min-height: 1.1rem;
+			}
+
+			.preview-card {
+				background: var(--canvas);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				box-shadow: var(--shadow);
+				padding: 1.5rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 240px;
+			}
+			.svg-preview {
+				display: block;
+				width: 100%;
+				max-height: 48vh;
+			}
+			.svg-preview path {
+				fill: var(--fg);
+			}
+
+			.preview-bar {
+				display: flex;
+				justify-content: flex-end;
+			}
+
+			.material-symbols-outlined {
+				font-variation-settings:
+					'FILL' 0,
+					'wght' 400,
+					'GRAD' 0,
+					'opsz' 24;
+				line-height: 1;
+			}
+			.spin {
+				animation: spin 1s linear infinite;
+			}
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="container">
+			<header>
+				<h1>text, dang it</h1>
+				<p>Drop in a font, type something, and get clean SVG outlines — shaped by HarfBuzz.</p>
+			</header>
+
+			<div class="field">
+				<div
+					class="dropzone"
+					id="dropzone"
+					role="button"
+					tabindex="0"
+					aria-label="Upload a font file"
+				>
+					<span class="material-symbols-outlined icon">upload_file</span>
+					<span class="hint">Drop a font file or click to browse</span>
+					<span class="filename" id="filename"></span>
+				</div>
+				<input type="file" id="file-input" accept=".ttf,.otf,.woff,.woff2" hidden />
+			</div>
+
+			<div class="field">
+				<label for="gf-input">Load from Google Fonts</label>
+				<div class="input-group">
+					<input
+						type="text"
+						id="gf-input"
+						placeholder="Paste a Google Fonts URL or <link> tag"
+					/>
+					<button id="gf-button" class="icon-only" aria-label="Load font">
+						<span class="material-symbols-outlined" id="gf-icon">download</span>
+					</button>
+				</div>
+				<div class="error" id="gf-error"></div>
+			</div>
+
+			<div class="field">
+				<label for="text-input">Text</label>
+				<textarea id="text-input" dir="auto" placeholder="Type something…"></textarea>
+			</div>
+
+			<div class="field">
+				<div class="preview-bar">
+					<button id="download-button" class="icon-only" aria-label="Download SVG" disabled>
+						<span class="material-symbols-outlined">download</span>
+					</button>
+				</div>
+				<div class="preview-card">
+					<svg
+						id="svg"
+						class="svg-preview"
+						viewBox="0 0 128 128"
+						xmlns="http://www.w3.org/2000/svg"
+					></svg>
+				</div>
+			</div>
+
+			<div class="error" id="status"></div>
+		</main>
+
+		<script type="module">
+			const SVG_NS = 'http://www.w3.org/2000/svg';
+			const HB_CDN = 'https://cdn.jsdelivr.net/npm/harfbuzzjs@1.2.0/dist/index.mjs';
+			const WOFF_MAGIC = 0x774f4646; // 'wOFF'
+			const defaultBbox = '0 0 128 128';
+
+			// DOM
+			const dropzone = document.getElementById('dropzone');
+			const fileInput = document.getElementById('file-input');
+			const filenameEl = document.getElementById('filename');
+			const gfInput = document.getElementById('gf-input');
+			const gfButton = document.getElementById('gf-button');
+			const gfIcon = document.getElementById('gf-icon');
+			const gfError = document.getElementById('gf-error');
+			const textarea = document.getElementById('text-input');
+			const svg = document.getElementById('svg');
+			const downloadButton = document.getElementById('download-button');
+			const statusEl = document.getElementById('status');
+
+			// State
+			let hb = null;
+			let font = null;
+			let glyphCache = {};
+			let pendingFont = null; // a font dropped before HarfBuzz finished loading
+
+			// --- Google Fonts CSS parsing -------------------------------------------
+			function parseFontFaceEntries(css) {
+				return [...css.matchAll(/@font-face\s*\{([^}]+)\}/g)].flatMap((m) => {
+					const urlMatch = m[1].match(/url\(['"]?(https:\/\/fonts\.gstatic\.com[^'")]+)['"]?\)/);
+					if (!urlMatch) return [];
+					const rangeMatch = m[1].match(/unicode-range:\s*([^;]+)/);
+					const unicodeRange = rangeMatch
+						? rangeMatch[1]
+								.trim()
+								.split(',')
+								.map((r) => {
+									r = r.trim().replace('U+', '');
+									if (r.includes('-')) {
+										const [a, b] = r.split('-');
+										return [parseInt(a, 16), parseInt(b, 16)];
+									}
+									const v = parseInt(r, 16);
+									return [v, v];
+								})
+						: null;
+					return [{ url: urlMatch[1], unicodeRange }];
+				});
+			}
+
+			function bestEntryForText(entries, text) {
+				// Score each entry by how many characters in the text fall within its unicode-range
+				let best = entries[entries.length - 1]; // default: last entry (latin)
+				let bestScore = -1;
+				for (const entry of entries) {
+					if (!entry.unicodeRange) continue;
+					let score = 0;
+					for (const char of text) {
+						const cp = char.codePointAt(0);
+						if (entry.unicodeRange.some(([a, b]) => cp >= a && cp <= b)) score++;
+					}
+					if (score > bestScore) {
+						bestScore = score;
+						best = entry;
+					}
+				}
+				return best;
+			}
+
+			// --- WOFF1 -> TTF (Google sometimes serves woff) -------------------------
+			async function decodeWoff1(woff) {
+				const v = new DataView(woff.buffer, woff.byteOffset);
+				const flavor = v.getUint32(4);
+				const numTables = v.getUint16(12);
+
+				// Parse table directory (starts at byte 44, 20 bytes per entry)
+				const tables = Array.from({ length: numTables }, (_, i) => {
+					const b = 44 + i * 20;
+					return {
+						tag: v.getUint32(b),
+						offset: v.getUint32(b + 4),
+						compLen: v.getUint32(b + 8),
+						origLen: v.getUint32(b + 12),
+						checksum: v.getUint32(b + 16)
+					};
+				});
+
+				// Decompress each table (WOFF1 uses zlib/RFC 1950)
+				const decompressed = await Promise.all(
+					tables.map(async (t) => {
+						if (t.compLen === t.origLen) return woff.slice(t.offset, t.offset + t.origLen);
+						const ds = new DecompressionStream('deflate');
+						const writer = ds.writable.getWriter();
+						writer.write(woff.slice(t.offset, t.offset + t.compLen));
+						writer.close();
+						const chunks = [];
+						const reader = ds.readable.getReader();
+						for (;;) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							chunks.push(value);
+						}
+						const out = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
+						let pos = 0;
+						for (const c of chunks) {
+							out.set(c, pos);
+							pos += c.length;
+						}
+						return out;
+					})
+				);
+
+				// Build offset table header values
+				let maxPow = 1,
+					log2 = 0;
+				while (maxPow * 2 <= numTables) {
+					maxPow *= 2;
+					log2++;
+				}
+
+				// Calculate output offsets (tables are 4-byte aligned)
+				let dataStart = 12 + numTables * 16;
+				const outOffsets = decompressed.map((d) => {
+					const off = dataStart;
+					dataStart += (d.length + 3) & ~3;
+					return off;
+				});
+
+				// Write TTF
+				const ttf = new Uint8Array(dataStart);
+				const tv = new DataView(ttf.buffer);
+				tv.setUint32(0, flavor);
+				tv.setUint16(4, numTables);
+				tv.setUint16(6, maxPow * 16); // searchRange
+				tv.setUint16(8, log2); // entrySelector
+				tv.setUint16(10, numTables * 16 - maxPow * 16); // rangeShift
+				tables.forEach((t, i) => {
+					const b = 12 + i * 16;
+					tv.setUint32(b, t.tag);
+					tv.setUint32(b + 4, t.checksum);
+					tv.setUint32(b + 8, outOffsets[i]);
+					tv.setUint32(b + 12, decompressed[i].length);
+					ttf.set(decompressed[i], outOffsets[i]);
+				});
+				return ttf;
+			}
+
+			// --- Font loading & shaping ----------------------------------------------
+			function loadFontData(fontData, name) {
+				if (!hb) {
+					pendingFont = { fontData, name };
+					return;
+				}
+				const blob = new hb.Blob(fontData.buffer);
+				const face = new hb.Face(blob, 0);
+				font = new hb.Font(face);
+				glyphCache = {};
+				filenameEl.textContent = name;
+				downloadButton.disabled = false;
+				render();
+			}
+
+			function loadFile(file) {
+				if (!file) return;
+				const reader = new FileReader();
+				reader.onload = (e) => loadFontData(new Uint8Array(e.target.result), file.name);
+				reader.readAsArrayBuffer(file);
+			}
+
+			async function loadFromGoogleFonts() {
+				gfError.textContent = '';
+				gfButton.disabled = true;
+				gfIcon.textContent = 'progress_activity';
+				gfIcon.classList.add('spin');
+				try {
+					let input = gfInput.value.trim();
+
+					// Extract href from a pasted <link> tag
+					const linkMatch = input.match(/href="([^"]+)"/);
+					if (linkMatch) input = linkMatch[1].replace(/&amp;/g, '&');
+
+					// Convert specimen page URL to CSS API URL
+					if (input.includes('fonts.google.com/specimen/')) {
+						const fontName = input.split('/specimen/')[1].split('?')[0];
+						input = `https://fonts.googleapis.com/css2?family=${fontName}`;
+					}
+
+					if (!input.startsWith('https://fonts.googleapis.com/')) {
+						throw new Error('Not a recognized Google Fonts URL');
+					}
+
+					const css = await (await fetch(input)).text();
+
+					const entries = parseFontFaceEntries(css);
+					if (!entries.length) throw new Error('No font URL found in CSS response');
+					const entry = bestEntryForText(entries, textarea.value);
+
+					const fontData = new Uint8Array(await (await fetch(entry.url)).arrayBuffer());
+
+					const magic = new DataView(fontData.buffer).getUint32(0);
+					const ttfData = magic === WOFF_MAGIC ? await decodeWoff1(fontData) : fontData;
+
+					const familyMatch = input.match(/family=([^&:]+)/);
+					const name = familyMatch
+						? decodeURIComponent(familyMatch[1].replace(/\+/g, ' '))
+						: 'Google Font';
+					loadFontData(ttfData, name);
+				} catch (e) {
+					gfError.textContent = e instanceof Error ? e.message : String(e);
+					console.error('Google Fonts load error:', e);
+				} finally {
+					gfButton.disabled = false;
+					gfIcon.textContent = 'download';
+					gfIcon.classList.remove('spin');
+				}
+			}
+
+			function render() {
+				const text = textarea.value;
+				if (!(hb && text && font)) {
+					svg.replaceChildren();
+					svg.setAttribute('viewBox', defaultBbox);
+					return;
+				}
+
+				const normalized = text.normalize('NFD');
+				const buffer = new hb.Buffer();
+				buffer.addText(normalized);
+				buffer.guessSegmentProperties();
+				hb.shape(font, buffer);
+				const result = buffer.getGlyphInfosAndPositions();
+				result.forEach((x) => {
+					if (glyphCache[x.codepoint]) return;
+					glyphCache[x.codepoint] = font.glyphToJson(x.codepoint);
+				});
+
+				let xmin = 10000;
+				let xmax = -10000;
+				let ymin = 10000;
+				let ymax = -10000;
+				let ax = 0;
+				let ay = 0;
+				const dPaths = result
+					.map((ginfo) => {
+						const path = glyphCache[ginfo.codepoint]
+							.filter((command) => command.type !== 'Z')
+							.map((command) => {
+								const coords = command.values
+									.map((p, i) => {
+										// apply ax/ay/dx/dy to coords
+										return i % 2 ? -(p + ay + (ginfo.yOffset ?? 0)) : p + ax + (ginfo.xOffset ?? 0);
+									})
+									.map((x, i) => {
+										// bbox calc
+										if (i % 2) {
+											if (x < ymin) ymin = x;
+											if (x > ymax) ymax = x;
+										} else {
+											if (x < xmin) xmin = x;
+											if (x > xmax) xmax = x;
+										}
+										return x;
+									});
+								return [command.type, ...coords];
+							});
+						ax += ginfo.xAdvance ?? 0;
+						ay += ginfo.yAdvance ?? 0;
+						return path;
+					})
+					.map((path) =>
+						path
+							.map((y) => y[0] + y.slice(1).join(' '))
+							.join('')
+							.replace(/ -/g, '-')
+					);
+
+				let width = xmax - xmin;
+				let height = ymax - ymin;
+				// pad it a bit
+				const pad = Math.round(Math.min(width / 10, height / 10));
+				xmin -= pad;
+				ymin -= pad;
+				width += pad * 2;
+				height += pad * 2;
+
+				svg.replaceChildren(
+					...dPaths.map((d) => {
+						const el = document.createElementNS(SVG_NS, 'path');
+						el.setAttribute('d', d);
+						return el;
+					})
+				);
+				svg.setAttribute('viewBox', `${xmin} ${ymin} ${width} ${height}`);
+			}
+
+			function downloadSVG() {
+				const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement('a');
+				link.href = url;
+				link.download = 'output.svg';
+				link.click();
+				URL.revokeObjectURL(url);
+			}
+
+			// --- Events ---------------------------------------------------------------
+			dropzone.addEventListener('click', () => fileInput.click());
+			dropzone.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					fileInput.click();
+				}
+			});
+			dropzone.addEventListener('dragover', (e) => {
+				e.preventDefault();
+				dropzone.classList.add('dragover');
+			});
+			dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+			dropzone.addEventListener('drop', (e) => {
+				e.preventDefault();
+				dropzone.classList.remove('dragover');
+				loadFile([...(e.dataTransfer?.files ?? [])][0]);
+			});
+			fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+
+			gfButton.addEventListener('click', loadFromGoogleFonts);
+			gfInput.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter') loadFromGoogleFonts();
+			});
+
+			textarea.addEventListener('input', render);
+			downloadButton.addEventListener('click', downloadSVG);
+
+			// --- Load HarfBuzz from the CDN ------------------------------------------
+			statusEl.textContent = 'Loading HarfBuzz…';
+			try {
+				hb = await import(HB_CDN);
+				statusEl.textContent = '';
+				if (pendingFont) {
+					const { fontData, name } = pendingFont;
+					pendingFont = null;
+					loadFontData(fontData, name);
+				}
+				render();
+			} catch (e) {
+				statusEl.textContent = 'Failed to load HarfBuzz from the CDN — check your connection and reload.';
+				console.error('HarfBuzz load error:', e);
+			}
+		</script>
+	</body>
+</html>

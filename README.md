@@ -1,38 +1,40 @@
-# create-svelte
+# text, dang it
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+A tiny font → SVG playground. Drop in a font (or load one from Google Fonts), type some
+text, and get clean SVG outlines — shaped by [HarfBuzz](https://harfbuzz.github.io/).
 
-## Creating a project
+The whole app is a **single, self-contained `index.html`**: HTML, CSS, and a vanilla
+`<script type="module">`. No build step, no dependencies to install, no `node_modules`.
+[HarfBuzz](https://www.npmjs.com/package/harfbuzzjs) is loaded at runtime from a CDN.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Run it
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+It must be served over **http(s)** — opening `index.html` directly from disk (`file://`)
+does **not** work, because browsers block loading ES modules from a `file://` (null) origin.
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Any static server works, e.g.:
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+python3 -m http.server 8000
+# then open http://localhost:8000/
 ```
 
-## Building
+or `npx serve`, etc.
 
-To create a production version of your app:
+> Note: it needs a network connection. HarfBuzz, the Material Symbols icons, and the
+> Google Fonts loader all fetch from the network at runtime.
 
-```bash
-npm run build
-```
+## Edit it
 
-You can preview the production build with `npm run preview`.
+Open `index.html` and edit. That's the whole app — markup, styles, and logic are all in
+that one file. Reload the served page to see changes.
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+## Deploy
+
+Pushing to `main` publishes `index.html` to GitHub Pages via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — no build, it just uploads
+the file.
+
+## License
+
+[MIT](LICENSE)
