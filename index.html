@@ -218,6 +218,10 @@
 				align-items: center;
 				gap: 0.75rem;
 			}
+			.download-group {
+				display: flex;
+				gap: 0.5rem;
+			}
 			.bg-control {
 				display: inline-flex;
 				align-items: center;
@@ -312,9 +316,14 @@
 						Background
 						<input type="color" id="bg-color" value="#ffffff" disabled />
 					</label>
-					<button id="download-button" class="icon-only" aria-label="Download SVG" disabled>
-						<span class="material-symbols-outlined">download</span>
-					</button>
+					<div class="download-group">
+						<button id="download-svg" aria-label="Download SVG" disabled>
+							<span class="material-symbols-outlined">download</span> SVG
+						</button>
+						<button id="download-png" aria-label="Download PNG" disabled>
+							<span class="material-symbols-outlined">download</span> PNG
+						</button>
+					</div>
 				</div>
 				<div class="preview-card">
 					<svg
@@ -322,6 +331,7 @@
 						class="svg-preview"
 						viewBox="0 0 128 128"
 						xmlns="http://www.w3.org/2000/svg"
+						xmlns:xlink="http://www.w3.org/1999/xlink"
 					></svg>
 				</div>
 			</div>
@@ -347,7 +357,8 @@
 			const gfError = document.getElementById('gf-error');
 			const textarea = document.getElementById('text-input');
 			const svg = document.getElementById('svg');
-			const downloadButton = document.getElementById('download-button');
+			const downloadSvgButton = document.getElementById('download-svg');
+			const downloadPngButton = document.getElementById('download-png');
 			const statusEl = document.getElementById('status');
 			const bgToggle = document.getElementById('bg-toggle');
 			const bgColor = document.getElementById('bg-color');
@@ -488,7 +499,8 @@
 				const face = new hb.Face(blob, 0);
 				font = new hb.Font(face);
 				filenameEl.textContent = name;
-				downloadButton.disabled = false;
+				downloadSvgButton.disabled = false;
+				downloadPngButton.disabled = false;
 				render();
 			}
 
@@ -683,14 +695,61 @@
 				svg.replaceChildren(...children);
 			}
 
-			function downloadSVG() {
-				const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+			function triggerDownload(blob, filename) {
 				const url = URL.createObjectURL(blob);
 				const link = document.createElement('a');
 				link.href = url;
-				link.download = 'output.svg';
+				link.download = filename;
 				link.click();
 				URL.revokeObjectURL(url);
+			}
+
+			function downloadSVG() {
+				triggerDownload(new Blob([svg.outerHTML], { type: 'image/svg+xml' }), 'output.svg');
+			}
+
+			// Longest side of the exported PNG, in pixels. The SVG is vector, so this
+			// just sets the rasterization resolution.
+			const PNG_MAX = 2048;
+
+			async function downloadPNG() {
+				const [, , vw, vh] = (svg.getAttribute('viewBox') ?? defaultBbox)
+					.split(/\s+/)
+					.map(Number);
+				if (!(vw > 0 && vh > 0)) return;
+				const scale = PNG_MAX / Math.max(vw, vh);
+				const w = Math.max(1, Math.round(vw * scale));
+				const h = Math.max(1, Math.round(vh * scale));
+
+				// Clone with an explicit pixel size so the SVG rasterizes at the target
+				// resolution (the live element is sized by CSS). Transparent unless a
+				// background rect was added; that bakes in automatically.
+				const clone = svg.cloneNode(true);
+				clone.setAttribute('width', w);
+				clone.setAttribute('height', h);
+				const url = URL.createObjectURL(
+					new Blob([clone.outerHTML], { type: 'image/svg+xml' })
+				);
+				let img;
+				try {
+					img = await new Promise((resolve, reject) => {
+						const i = new Image();
+						i.onload = () => resolve(i);
+						i.onerror = reject;
+						i.src = url;
+					});
+				} catch {
+					URL.revokeObjectURL(url);
+					return;
+				}
+				const canvas = document.createElement('canvas');
+				canvas.width = w;
+				canvas.height = h;
+				canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+				URL.revokeObjectURL(url);
+				canvas.toBlob((blob) => {
+					if (blob) triggerDownload(blob, 'output.png');
+				}, 'image/png');
 			}
 
 			// --- Events ---------------------------------------------------------------
@@ -719,7 +778,8 @@
 			});
 
 			textarea.addEventListener('input', render);
-			downloadButton.addEventListener('click', downloadSVG);
+			downloadSvgButton.addEventListener('click', downloadSVG);
+			downloadPngButton.addEventListener('click', downloadPNG);
 
 			bgToggle.addEventListener('change', () => {
 				bgColor.disabled = !bgToggle.checked;
