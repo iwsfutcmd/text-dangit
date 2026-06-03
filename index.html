@@ -511,7 +511,75 @@
 				}
 			}
 
-			function render() {
+			// HarfBuzz frames each glyph by its COLR clip box / font metrics, which
+			// leaves slack around the actual ink (and it paints gradients via a giant
+			// clipped <rect>, so getBBox() can't see the real bounds). Rasterize the
+			// rendered SVG and alpha-scan for the drawn area, returning a tight viewBox
+			// with a little padding. Falls back to the given viewBox on any failure.
+			const CROP_RASTER_MAX = 512; // longest side, in px, used for the scan
+			const CROP_ALPHA_THRESHOLD = 8;
+			// Uniform padding around the ink, as a fraction of the smaller ink
+			// dimension (keeps it modest for very elongated text).
+			const CROP_PADDING = 0.1;
+
+			async function inkViewBox(svgString, viewBox) {
+				const [vx, vy, vw, vh] = viewBox.split(/\s+/).map(Number);
+				if (!(vw > 0 && vh > 0)) return viewBox;
+				const scale = Math.min(1, CROP_RASTER_MAX / Math.max(vw, vh));
+				const cw = Math.max(1, Math.round(vw * scale));
+				const ch = Math.max(1, Math.round(vh * scale));
+				let img;
+				const url = URL.createObjectURL(new Blob([svgString], { type: 'image/svg+xml' }));
+				try {
+					img = await new Promise((resolve, reject) => {
+						const i = new Image();
+						i.onload = () => resolve(i);
+						i.onerror = reject;
+						i.src = url;
+					});
+				} catch {
+					URL.revokeObjectURL(url);
+					return viewBox;
+				}
+				const canvas = document.createElement('canvas');
+				canvas.width = cw;
+				canvas.height = ch;
+				const ctx = canvas.getContext('2d', { willReadFrequently: true });
+				ctx.drawImage(img, 0, 0, cw, ch);
+				URL.revokeObjectURL(url);
+				let data;
+				try {
+					data = ctx.getImageData(0, 0, cw, ch).data;
+				} catch {
+					return viewBox; // tainted canvas — shouldn't happen for self-contained SVG
+				}
+				let minx = cw,
+					miny = ch,
+					maxx = -1,
+					maxy = -1;
+				for (let y = 0; y < ch; y++) {
+					for (let x = 0; x < cw; x++) {
+						if (data[(y * cw + x) * 4 + 3] > CROP_ALPHA_THRESHOLD) {
+							if (x < minx) minx = x;
+							if (x > maxx) maxx = x;
+							if (y < miny) miny = y;
+							if (y > maxy) maxy = y;
+						}
+					}
+				}
+				if (maxx < 0) return viewBox; // nothing drawn
+				const ix = vx + minx / scale;
+				const iy = vy + miny / scale;
+				const iw = (maxx - minx + 1) / scale;
+				const ih = (maxy - miny + 1) / scale;
+				const pad = Math.min(iw, ih) * CROP_PADDING;
+				return `${ix - pad} ${iy - pad} ${iw + pad * 2} ${ih + pad * 2}`;
+			}
+
+			let renderSeq = 0;
+
+			async function render() {
+				const seq = ++renderSeq;
 				const text = textarea.value;
 				if (!(hb && text && font)) {
 					svg.replaceChildren();
@@ -528,8 +596,7 @@
 
 				// Positioned glyphs in font units (y-up). HarfBuzz's vector paint
 				// handles color (COLR v0/v1 with gradients/compositing), falls back
-				// to a black outline for plain glyphs, flips into SVG's y-down space,
-				// and fits the viewBox — so we just shape and place.
+				// to a black outline for plain glyphs, and flips into SVG's y-down space.
 				let ax = 0;
 				let ay = 0;
 				const glyphs = result.map((ginfo) => {
@@ -551,11 +618,17 @@
 					return;
 				}
 
-				// Adopt the rendered document's viewBox and contents into our <svg>
-				// element, keeping its id/class (and the page styling) intact.
 				const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
 				const rendered = document.importNode(doc.documentElement, true);
-				svg.setAttribute('viewBox', rendered.getAttribute('viewBox') ?? defaultBbox);
+				const hbViewBox = rendered.getAttribute('viewBox') ?? defaultBbox;
+
+				// Crop to the actual drawn area (async: rasterizes off-screen).
+				const viewBox = await inkViewBox(svgString, hbViewBox);
+				if (seq !== renderSeq) return; // a newer render superseded this one
+
+				// Adopt the contents into our <svg>, keeping its id/class (and page
+				// styling) intact, with the tightened viewBox.
+				svg.setAttribute('viewBox', viewBox);
 				svg.replaceChildren(...rendered.childNodes);
 			}
 
